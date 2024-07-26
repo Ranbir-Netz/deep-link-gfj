@@ -1,7 +1,10 @@
 import 'dart:async';
+import 'dart:io';
 
+import 'package:android_play_install_referrer/android_play_install_referrer.dart';
 import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 const kWindowsScheme = 'sample';
 
@@ -20,12 +23,12 @@ class _MyAppState extends State<MyApp> {
   final _navigatorKey = GlobalKey<NavigatorState>();
   late AppLinks _appLinks;
   StreamSubscription<Uri>? _linkSubscription;
+  String? receivedValue;
 
   @override
-  void initState() {
+  void initState() async {
+    await initDeepLinks();
     super.initState();
-
-    initDeepLinks();
   }
 
   @override
@@ -39,8 +42,9 @@ class _MyAppState extends State<MyApp> {
     _appLinks = AppLinks();
 
     // Handle links
-    _linkSubscription = _appLinks.uriLinkStream.listen((uri) {
+    _linkSubscription = _appLinks.uriLinkStream.listen((uri) async {
       debugPrint('onAppLink: $uri');
+      receivedValue = await handleDeepLink(uri);
       openAppLink(uri);
     });
   }
@@ -83,7 +87,7 @@ class _MyAppState extends State<MyApp> {
   Widget defaultScreen() {
     return Scaffold(
       appBar: AppBar(title: const Text('Default Screen')),
-      body: const Center(
+      body: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -97,8 +101,10 @@ class _MyAppState extends State<MyApp> {
             sample://foo/#/book/hello-deep-linking
 
             This example code triggers new page from URL fragment.
+
+            Received Value = ${receivedValue ?? "Failed"}
             '''),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
           ],
         ),
       ),
@@ -110,5 +116,38 @@ class _MyAppState extends State<MyApp> {
       appBar: AppBar(title: const Text('Second Screen')),
       body: Center(child: Text('Opened with parameter: $bookId')),
     );
+  }
+
+  Future<String?> handleDeepLink(Uri uri) async {
+    String? value;
+    bool isFirstInstall;
+
+    //Check if app is installed from Play/App Store
+    if (uri.path.contains('play.google.com') || uri.path.contains('apps.apple.com')) {
+      isFirstInstall = true;
+    } else {
+      isFirstInstall = false;
+    }
+
+    if (Platform.isAndroid) {
+      if (isFirstInstall) {
+        //Google Play Referrer Code
+        ReferrerDetails details = await AndroidPlayInstallReferrer.installReferrer;
+        value = details.installReferrer;
+      } else {
+        //For testing the current url we are using this parameter. Should be modified with route and data for future
+        value = uri.queryParameters['districtId'];
+      }
+    }
+    if (Platform.isIOS) {
+      //Clipboard Code
+      if (isFirstInstall) {
+        final clipboardData = await Clipboard.getData(Clipboard.kTextPlain);
+        value = clipboardData?.text;
+      } else {
+        value = uri.queryParameters['districtId'];
+      }
+    }
+    return value;
   }
 }
