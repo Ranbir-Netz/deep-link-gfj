@@ -133,10 +133,15 @@ class _MyAppState extends State<MyApp> {
       if (isFirstInstall) {
         //Google Play Referrer Code
         ReferrerDetails details = await AndroidPlayInstallReferrer.installReferrer;
-        value = "First Launch -> $details";
+        value = "First Launch -> ${details.toString()}";
       } else {
         //For testing the current url we are using this parameter. Should be modified with route and data for future
-        value = "Not First Launch -> ${uri.queryParameters['districtId']}";
+        ReferrerDetails details = await AndroidPlayInstallReferrer.installReferrer;
+        if (details.installReferrer != null) {
+          value = "Inside Not First Launch -> ${details.installReferrer} ${details.toString()}";
+        } else {
+          value = "Not First Launch -> ${uri.queryParameters['districtId']}";
+        }
       }
     }
     if (Platform.isIOS) {
