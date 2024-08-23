@@ -26,15 +26,14 @@ class _MyAppState extends State<MyApp> {
   String? receivedValue;
 
   @override
-  void initState() async {
-    await initDeepLinks();
+  void initState() {
     super.initState();
+    initDeepLinks();
   }
 
   @override
   void dispose() {
     _linkSubscription?.cancel();
-
     super.dispose();
   }
 
@@ -45,6 +44,7 @@ class _MyAppState extends State<MyApp> {
     _linkSubscription = _appLinks.uriLinkStream.listen((uri) async {
       debugPrint('onAppLink: $uri');
       receivedValue = await handleDeepLink(uri);
+
       openAppLink(uri);
     });
   }
@@ -105,6 +105,12 @@ class _MyAppState extends State<MyApp> {
             Received Value = ${receivedValue ?? "Failed"}
             '''),
             const SizedBox(height: 20),
+            IconButton(
+              onPressed: () {
+                setState(() {});
+              },
+              icon: Icon(Icons.refresh),
+            ),
           ],
         ),
       ),
