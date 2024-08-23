@@ -138,7 +138,7 @@ class _MyAppState extends State<MyApp> {
     if (Platform.isAndroid) {
       ReferrerDetails details = await AndroidPlayInstallReferrer.installReferrer;
       if (details.installReferrer != null) {
-        value = "First Launch -> ${details.installReferrer} ${details.toString()}";
+        value = "First Launch -> ${details.installReferrer}";
       } else {
         value = "Not First Launch -> ${uri.queryParameters['districtId']}";
       }
