@@ -38,19 +38,21 @@ class _MyAppState extends State<MyApp> {
   }
 
   Future<void> initDeepLinks() async {
-    _appLinks = AppLinks();
+    //Referrer check for Android as Uri stream might not be called for Play store download
+    if (Platform.isAndroid) {
+      ReferrerDetails details = await AndroidPlayInstallReferrer.installReferrer;
+      if (details.installReferrer != null) {
+        receivedValue = "Play Store Referrer -> ${details.installReferrer}";
+        return;
+      }
+    }
 
     // Handle links
+    _appLinks = AppLinks();
     _linkSubscription = _appLinks.uriLinkStream.listen((uri) async {
       debugPrint('onAppLink: $uri');
       receivedValue = await handleDeepLink(uri);
-
-      openAppLink(uri);
     });
-  }
-
-  void openAppLink(Uri uri) {
-    _navigatorKey.currentState?.pushNamed(uri.fragment);
   }
 
   @override
@@ -106,7 +108,8 @@ class _MyAppState extends State<MyApp> {
             '''),
             const SizedBox(height: 20),
             IconButton(
-              onPressed: () {
+              onPressed: () async {
+                await initDeepLinks();
                 setState(() {});
               },
               icon: Icon(Icons.refresh),
@@ -136,12 +139,14 @@ class _MyAppState extends State<MyApp> {
     }
 
     if (Platform.isAndroid) {
-      ReferrerDetails details = await AndroidPlayInstallReferrer.installReferrer;
-      if (details.installReferrer != null) {
-        value = "First Launch -> ${details.installReferrer}";
-      } else {
-        value = "Not First Launch -> ${uri.queryParameters['districtId']}";
-      }
+      //Add check for first launch later
+
+      // ReferrerDetails details = await AndroidPlayInstallReferrer.installReferrer;
+      // if (details.installReferrer != null) {
+      //   value = "First Launch -> ${details.installReferrer}";
+      // } else {
+      value = "Not First Launch -> ${uri.queryParameters['districtId']}";
+      // }
     }
     if (Platform.isIOS) {
       //Clipboard Code
