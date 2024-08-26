@@ -127,21 +127,31 @@ class _MyAppState extends State<MyApp> {
   Future<String?> handleDeepLink(Uri uri) async {
     String? value;
     bool isFirstInstall;
-
+    debugPrint(uri.path);
     //Check if app is installed from Play/App Store
     if (uri.path.contains('play.google.com') || uri.path.contains('apps.apple.com')) {
       isFirstInstall = true;
     } else {
       isFirstInstall = false;
     }
-
+    debugPrint("$isFirstInstall");
     if (Platform.isAndroid) {
-      ReferrerDetails details = await AndroidPlayInstallReferrer.installReferrer;
-      if (details.installReferrer != null) {
-        value = "First Launch -> ${details.installReferrer}";
+      if (isFirstInstall) {
+        ReferrerDetails details = await AndroidPlayInstallReferrer.installReferrer;
+        if (details.installReferrer != null) {
+          value = "First Launch -> ${details.installReferrer}";
+        }
       } else {
         value = "Not First Launch -> ${uri.queryParameters['districtId']}";
+        debugPrint("VALUE--->$value");
       }
+      // ReferrerDetails details = await AndroidPlayInstallReferrer.installReferrer;
+      // if (details.installReferrer != null) {
+      //   value = "First Launch -> ${details.installReferrer}";
+      // } else {
+      //   value = "Not First Launch -> ${uri.queryParameters['districtId']}";
+      //   debugPrint("VALUE--->$value");
+      // }
     }
     if (Platform.isIOS) {
       //Clipboard Code
