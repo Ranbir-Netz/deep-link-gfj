@@ -6,8 +6,6 @@ import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-const kWindowsScheme = 'sample';
-
 void main() {
   runApp(const MyApp());
 }
@@ -20,7 +18,6 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  final _navigatorKey = GlobalKey<NavigatorState>();
   late AppLinks _appLinks;
   StreamSubscription<Uri>? _linkSubscription;
   String? receivedValue;
@@ -39,122 +36,27 @@ class _MyAppState extends State<MyApp> {
 
   Future<void> initDeepLinks() async {
     _appLinks = AppLinks();
-
-    // Handle links
     _linkSubscription = _appLinks.uriLinkStream.listen((uri) async {
       debugPrint('onAppLink: $uri');
       receivedValue = await handleDeepLink(uri);
-
-      openAppLink(uri);
+      setState(() {}); // Refresh the UI to show the new value
     });
-  }
-
-  void openAppLink(Uri uri) {
-    _navigatorKey.currentState?.pushNamed(uri.fragment);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      navigatorKey: _navigatorKey,
-      initialRoute: "/",
-      onGenerateRoute: (RouteSettings settings) {
-        Widget routeWidget = defaultScreen();
-
-        // Mimic web routing
-        final routeName = settings.name;
-        if (routeName != null) {
-          if (routeName.startsWith('/book/')) {
-            // Navigated to /book/:id
-            routeWidget = customScreen(
-              routeName.substring(routeName.indexOf('/book/')),
-            );
-          } else if (routeName == '/book') {
-            // Navigated to /book without other parameters
-            routeWidget = customScreen("None");
-          }
-        }
-
-        return MaterialPageRoute(
-          builder: (context) => routeWidget,
-          settings: settings,
-          fullscreenDialog: true,
-        );
-      },
-    );
-  }
-
-  Widget defaultScreen() {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Default Screen')),
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SelectableText('''
-            Launch an intent to get to the second screen.
-
-            On web:
-            http://localhost:<port>/#/book/1 for example.
-
-            On windows & macOS, open your browser:
-            sample://foo/#/book/hello-deep-linking
-
-            This example code triggers new page from URL fragment.
-
-            Received Value = ${receivedValue ?? "Failed"}
-            '''),
-            const SizedBox(height: 20),
-            IconButton(
-              onPressed: () {
-                setState(() {});
-              },
-              icon: Icon(Icons.refresh),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget customScreen(String bookId) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Second Screen')),
-      body: Center(child: Text('Opened with parameter: $bookId')),
-    );
   }
 
   Future<String?> handleDeepLink(Uri uri) async {
     String? value;
-    bool isFirstInstall;
-    debugPrint(uri.path);
-    //Check if app is installed from Play/App Store
-    if (uri.path.contains('play.google.com') || uri.path.contains('apps.apple.com')) {
-      isFirstInstall = true;
-    } else {
-      isFirstInstall = false;
-    }
-    debugPrint("$isFirstInstall");
+    bool isFirstInstall = uri.path.contains('play.google.com') || uri.path.contains('apps.apple.com');
+
     if (Platform.isAndroid) {
       if (isFirstInstall) {
         ReferrerDetails details = await AndroidPlayInstallReferrer.installReferrer;
-        if (details.installReferrer != null) {
-          value = "First Launch -> ${details.installReferrer}";
-        }
+        value = details.installReferrer != null ? "First Launch -> ${details.installReferrer}" : null;
       } else {
         value = "Not First Launch -> ${uri.queryParameters['districtId']}";
-        debugPrint("VALUE--->$value");
       }
-      // ReferrerDetails details = await AndroidPlayInstallReferrer.installReferrer;
-      // if (details.installReferrer != null) {
-      //   value = "First Launch -> ${details.installReferrer}";
-      // } else {
-      //   value = "Not First Launch -> ${uri.queryParameters['districtId']}";
-      //   debugPrint("VALUE--->$value");
-      // }
     }
+
     if (Platform.isIOS) {
-      //Clipboard Code
       if (isFirstInstall) {
         final clipboardData = await Clipboard.getData(Clipboard.kTextPlain);
         value = clipboardData?.text;
@@ -162,6 +64,35 @@ class _MyAppState extends State<MyApp> {
         value = uri.queryParameters['districtId'];
       }
     }
+
     return value;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Default Screen')),
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SelectableText('''
+              The app was opened via a deep link.
+
+              Received Value: ${receivedValue ?? "No Value Received"}
+              '''),
+              const SizedBox(height: 20),
+              IconButton(
+                onPressed: () {
+                  setState(() {}); // Manually refresh the screen
+                },
+                icon: const Icon(Icons.refresh),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
