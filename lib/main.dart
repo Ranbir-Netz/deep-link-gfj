@@ -21,11 +21,13 @@ class _MyAppState extends State<MyApp> {
   late AppLinks _appLinks;
   StreamSubscription<Uri>? _linkSubscription;
   String? receivedValue;
+  bool isFirstLaunch = false;
 
   @override
   void initState() {
     super.initState();
     initDeepLinks();
+    checkPlayInstallReferrer();
   }
 
   @override
@@ -48,15 +50,8 @@ class _MyAppState extends State<MyApp> {
     bool isFirstInstall = uri.path.contains('play.google.com') || uri.path.contains('apps.apple.com');
 
     if (Platform.isAndroid) {
-      debugPrint("Checking for Play Install Referrer...");
       if (isFirstInstall) {
-        ReferrerDetails details = await AndroidPlayInstallReferrer.installReferrer;
-        if (details.installReferrer != null) {
-          value = "First Launch -> ${details.installReferrer}";
-          debugPrint("Install Referrer received: $value");
-        } else {
-          debugPrint("Install Referrer is null");
-        }
+        value = await fetchPlayInstallReferrer();
       } else {
         value = "Not First Launch -> ${uri.queryParameters['districtId']}";
         debugPrint("Not first launch: $value");
@@ -75,6 +70,31 @@ class _MyAppState extends State<MyApp> {
     return value;
   }
 
+  Future<String?> fetchPlayInstallReferrer() async {
+    if (Platform.isAndroid) {
+      debugPrint("Checking for Play Install Referrer...");
+      ReferrerDetails details = await AndroidPlayInstallReferrer.installReferrer;
+      if (details.installReferrer != null) {
+        final value = "Install Referrer -> ${details.installReferrer}";
+        debugPrint("Install Referrer received: $value");
+        return value;
+      } else {
+        debugPrint("Install Referrer is null");
+      }
+    }
+    return null;
+  }
+
+  Future<void> checkPlayInstallReferrer() async {
+    if (Platform.isAndroid) {
+      String? referrer = await fetchPlayInstallReferrer();
+      if (referrer != null) {
+        receivedValue = referrer;
+        setState(() {});
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -90,11 +110,9 @@ class _MyAppState extends State<MyApp> {
               Received Value: ${receivedValue ?? "No Value Received"}
               '''),
               const SizedBox(height: 20),
-              IconButton(
-                onPressed: () {
-                  setState(() {}); // Manually refresh the screen
-                },
-                icon: const Icon(Icons.refresh),
+              ElevatedButton(
+                onPressed: checkPlayInstallReferrer,
+                child: const Text('Fetch Play Install Referrer'),
               ),
             ],
           ),
