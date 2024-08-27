@@ -48,11 +48,18 @@ class _MyAppState extends State<MyApp> {
     bool isFirstInstall = uri.path.contains('play.google.com') || uri.path.contains('apps.apple.com');
 
     if (Platform.isAndroid) {
+      debugPrint("Checking for Play Install Referrer...");
       if (isFirstInstall) {
         ReferrerDetails details = await AndroidPlayInstallReferrer.installReferrer;
-        value = details.installReferrer != null ? "First Launch -> ${details.installReferrer}" : null;
+        if (details.installReferrer != null) {
+          value = "First Launch -> ${details.installReferrer}";
+          debugPrint("Install Referrer received: $value");
+        } else {
+          debugPrint("Install Referrer is null");
+        }
       } else {
         value = "Not First Launch -> ${uri.queryParameters['districtId']}";
+        debugPrint("Not first launch: $value");
       }
     }
 
