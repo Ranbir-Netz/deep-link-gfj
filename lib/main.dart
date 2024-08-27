@@ -4,14 +4,13 @@ import 'dart:io';
 import 'package:android_play_install_referrer/android_play_install_referrer.dart';
 import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 void main() {
   runApp(const MyApp());
 }
 
 class MyApp extends StatefulWidget {
-  const MyApp({Key? key}) : super(key: key);
+  const MyApp({super.key});
 
   @override
   State<MyApp> createState() => _MyAppState();
@@ -21,7 +20,7 @@ class _MyAppState extends State<MyApp> {
   late AppLinks _appLinks;
   StreamSubscription<Uri>? _linkSubscription;
   String? receivedValue;
-  bool isFirstLaunch = false;
+  String? playInstallReferrerValue;
 
   @override
   void initState() {
@@ -41,58 +40,46 @@ class _MyAppState extends State<MyApp> {
     _appLinks = AppLinks();
     _linkSubscription = _appLinks.uriLinkStream.listen((uri) async {
       debugPrint('onAppLink: $uri');
-      receivedValue = await handleDeepLink(uri);
-      setState(() {}); // Refresh the UI to show the new value
+      await handleDeepLink(uri);
+    }, onError: (err) {
+      debugPrint('Failed to receive deep link: $err');
     });
   }
 
-  Future<String?> handleDeepLink(Uri uri) async {
-    String? value;
-    bool isFirstInstall = uri.path.contains('play.google.com') || uri.path.contains('apps.apple.com');
-
-    if (Platform.isAndroid) {
-      if (isFirstInstall) {
-        value = await fetchPlayInstallReferrer();
-      } else {
-        value = "Not First Launch -> ${uri.queryParameters['districtId']}";
-        debugPrint("Not first launch: $value");
-      }
+  Future<void> handleDeepLink(Uri uri) async {
+    bool isDeepLink = !uri.path.contains('play.google.com') && !uri.path.contains('apps.apple.com');
+    if (isDeepLink) {
+      receivedValue = "Deep Link Value -> ${uri.queryParameters['districtId']}";
+      debugPrint("Deep link detected, value: $receivedValue");
+    } else {
+      debugPrint("Play store URL detected, skipping deep link handling.");
     }
 
-    if (Platform.isIOS) {
-      if (isFirstInstall) {
-        final clipboardData = await Clipboard.getData(Clipboard.kTextPlain);
-        value = clipboardData?.text;
-      } else {
-        value = uri.queryParameters['districtId'];
-      }
+    // Always update the UI if a deep link is detected or if no Play Store URL is involved
+    if (isDeepLink || playInstallReferrerValue == null) {
+      setState(() {});
     }
-
-    return value;
-  }
-
-  Future<String?> fetchPlayInstallReferrer() async {
-    if (Platform.isAndroid) {
-      debugPrint("Checking for Play Install Referrer...");
-      ReferrerDetails details = await AndroidPlayInstallReferrer.installReferrer;
-      if (details.installReferrer != null) {
-        final value = "Install Referrer -> ${details.installReferrer}";
-        debugPrint("Install Referrer received: $value");
-        return value;
-      } else {
-        debugPrint("Install Referrer is null");
-      }
-    }
-    return null;
   }
 
   Future<void> checkPlayInstallReferrer() async {
-    debugPrint("Check Play Called");
     if (Platform.isAndroid) {
-      String? referrer = await fetchPlayInstallReferrer();
-      if (referrer != null) {
-        receivedValue = referrer;
-        setState(() {});
+      debugPrint("Checking Play Install Referrer...");
+      try {
+        ReferrerDetails details = await AndroidPlayInstallReferrer.installReferrer;
+        if (details.installReferrer != null && details.installReferrer!.isNotEmpty) {
+          playInstallReferrerValue = "Install Referrer -> ${details.installReferrer}";
+          debugPrint("Install Referrer received: $playInstallReferrerValue");
+
+          // If no deep link has been processed yet, show the install referrer
+          if (receivedValue == null) {
+            receivedValue = playInstallReferrerValue;
+            setState(() {}); // Update UI to show referrer
+          }
+        } else {
+          debugPrint("Install Referrer is null or empty");
+        }
+      } catch (e) {
+        debugPrint("Error fetching Play Install Referrer: $e");
       }
     }
   }
@@ -106,11 +93,10 @@ class _MyAppState extends State<MyApp> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              SelectableText('''
-              The app was opened via a deep link.
-
-              Received Value: ${receivedValue ?? "No Value Received"}
-              '''),
+              SelectableText(
+                'The app was opened via a deep link or referrer.\n\nReceived Value: ${receivedValue ?? "No Value Received"}',
+                textAlign: TextAlign.center,
+              ),
               const SizedBox(height: 20),
               ElevatedButton(
                 onPressed: checkPlayInstallReferrer,
