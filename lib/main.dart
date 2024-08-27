@@ -37,6 +37,7 @@ class _MyAppState extends State<MyApp> {
   }
 
   Future<void> initDeepLinks() async {
+    debugPrint('Init Deep Links Called');
     _appLinks = AppLinks();
     _linkSubscription = _appLinks.uriLinkStream.listen((uri) async {
       debugPrint('onAppLink: $uri');
@@ -86,6 +87,7 @@ class _MyAppState extends State<MyApp> {
   }
 
   Future<void> checkPlayInstallReferrer() async {
+    debugPrint("Check Play Called");
     if (Platform.isAndroid) {
       String? referrer = await fetchPlayInstallReferrer();
       if (referrer != null) {
